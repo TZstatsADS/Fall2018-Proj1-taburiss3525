@@ -1,0 +1,146 @@
+---
+title: "GR5243-Project1"
+author: "Chenghao Yu cy2475"
+date: "September 18, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+HappyDB is a corpus of 100,000 crowd-sourced happy moments via Amazon's Mechanical Turk. You can read more about it on https://arxiv.org/abs/1801.07746.
+
+Here, we do some analysis on the cleaned data and try to dig some deep relation between the happy moments and users' demographic information, especially the relation between happy moments and marital status and parenthood.
+
+### Step 0 - Load all the required libraries
+
+```{r load libraries, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(tidytext)
+library(DT)
+library(scales)
+library(wordcloud2)
+library(gridExtra)
+library(ngram)
+library(shiny) 
+```
+
+### Step 1 - Load the processed text data along with demographic information on contributors
+
+```{r load data, warning=FALSE, message=FALSE}
+hm_data <- read_csv("../output/processed_moments.csv")
+
+urlfile<-'https://raw.githubusercontent.com/rit-public/HappyDB/master/happydb/data/demographic.csv'
+demo_data <- read_csv(urlfile)
+```
+
+### Combine both the data sets and keep the required columns for analysis
+
+We select a subset of the data that satisfies specific row conditions.
+
+```{r combining data, warning=FALSE, message=FALSE}
+hm_data <- hm_data %>%
+  inner_join(demo_data, by = "wid") %>%
+  select(wid,
+         original_hm,
+         gender, 
+         marital, 
+         parenthood,
+         reflection_period,
+         age, 
+         country, 
+         ground_truth_category, 
+         text) %>%
+  mutate(count = sapply(hm_data$text, wordcount)) %>%
+  filter(gender %in% c("m", "f")) %>%
+  filter(marital %in% c("single", "married",
+                        "widowed", "divorced")) %>%
+  filter(parenthood %in% c("n", "y")) %>%
+  filter(reflection_period %in% c("24h", "3m")) %>%
+  mutate(reflection_period = fct_recode(reflection_period, 
+                                        months_3 = "3m", hours_24 = "24h"))
+```
+
+```{r}
+single_hm_data <- hm_data[which(hm_data$marital=="single"),]
+married_hm_data <- hm_data[which(hm_data$marital=="married"),]
+widowed_hm_data <- hm_data[which(hm_data$marital=="widowed"),]
+divorced_hm_data <- hm_data[which(hm_data$marital=="divorced"),]
+```
+
+### Create a bag of words using the text data for different marital status group
+
+```{r bag of words, warning=FALSE, message=FALSE}
+bag_of_words_s <-  single_hm_data %>%
+  unnest_tokens(word, text)
+
+word_count_s <- bag_of_words_s %>%
+  count(word, sort = TRUE)
+```
+
+```{r bag of words, warning=FALSE, message=FALSE}
+bag_of_words_m <-  married_hm_data %>%
+  unnest_tokens(word, text)
+
+word_count_m <- bag_of_words_m %>%
+  count(word, sort = TRUE)
+```
+
+```{r bag of words, warning=FALSE, message=FALSE}
+bag_of_words_w <-  widowed_hm_data %>%
+  unnest_tokens(word, text)
+
+word_count_w <- bag_of_words_w %>%
+  count(word, sort = TRUE)
+```
+
+```{r bag of words, warning=FALSE, message=FALSE}
+bag_of_words_d <-  divorced_hm_data %>%
+  unnest_tokens(word, text)
+
+word_count_d <- bag_of_words_d %>%
+  count(word, sort = TRUE)
+```
+
+### Create bigrams using the text data
+
+```{r bigram, warning=FALSE, message=FALSE}
+hm_bigrams_s <- single_hm_data %>%
+  filter(count != 1) %>%
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)
+
+bigram_counts_s <- hm_bigrams_s %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  count(word1, word2, sort = TRUE)
+```
+
+```{r bigram, warning=FALSE, message=FALSE}
+hm_bigrams_m <- married_hm_data %>%
+  filter(count != 1) %>%
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)
+
+bigram_counts_m <- hm_bigrams_m %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  count(word1, word2, sort = TRUE)
+```
+
+```{r bigram, warning=FALSE, message=FALSE}
+hm_bigrams_w <- widowed_hm_data %>%
+  filter(count != 1) %>%
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)
+
+bigram_counts_w <- hm_bigrams_w %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  count(word1, word2, sort = TRUE)
+```
+
+```{r bigram, warning=FALSE, message=FALSE}
+hm_bigrams_d <- divorced_hm_data %>%
+  filter(count != 1) %>%
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)
+
+bigram_counts_d <- hm_bigrams_d %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  count(word1, word2, sort = TRUE)
+```
