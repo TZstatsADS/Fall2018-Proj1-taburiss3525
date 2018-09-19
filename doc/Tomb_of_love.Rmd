@@ -2,11 +2,13 @@
 title: "GR5243-Project1"
 author: "Chenghao Yu cy2475"
 date: "September 18, 2018"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = F)
 ```
 
 HappyDB is a corpus of 100,000 crowd-sourced happy moments via Amazon's Mechanical Turk. You can read more about it on https://arxiv.org/abs/1801.07746.
@@ -24,6 +26,12 @@ library(wordcloud2)
 library(gridExtra)
 library(ngram)
 library(shiny) 
+library(ggraph)
+library(igraph)
+```
+
+```{r}
+print(version)
 ```
 
 ### Step 1 - Load the processed text data along with demographic information on contributors
@@ -71,7 +79,7 @@ divorced_hm_data <- hm_data[which(hm_data$marital=="divorced"),]
 
 ### Create a bag of words using the text data for different marital status group
 
-```{r bag of words, warning=FALSE, message=FALSE}
+```{r bag of words for single group, warning=FALSE, message=FALSE}
 bag_of_words_s <-  single_hm_data %>%
   unnest_tokens(word, text)
 
@@ -79,7 +87,7 @@ word_count_s <- bag_of_words_s %>%
   count(word, sort = TRUE)
 ```
 
-```{r bag of words, warning=FALSE, message=FALSE}
+```{r bag of words for married group, warning=FALSE, message=FALSE}
 bag_of_words_m <-  married_hm_data %>%
   unnest_tokens(word, text)
 
@@ -87,7 +95,7 @@ word_count_m <- bag_of_words_m %>%
   count(word, sort = TRUE)
 ```
 
-```{r bag of words, warning=FALSE, message=FALSE}
+```{r bag of words for divorced group, warning=FALSE, message=FALSE}
 bag_of_words_w <-  widowed_hm_data %>%
   unnest_tokens(word, text)
 
@@ -95,7 +103,7 @@ word_count_w <- bag_of_words_w %>%
   count(word, sort = TRUE)
 ```
 
-```{r bag of words, warning=FALSE, message=FALSE}
+```{r bag of words for widowed group, warning=FALSE, message=FALSE}
 bag_of_words_d <-  divorced_hm_data %>%
   unnest_tokens(word, text)
 
@@ -105,7 +113,7 @@ word_count_d <- bag_of_words_d %>%
 
 ### Create bigrams using the text data
 
-```{r bigram, warning=FALSE, message=FALSE}
+```{r bigram for single group, warning=FALSE, message=FALSE}
 hm_bigrams_s <- single_hm_data %>%
   filter(count != 1) %>%
   unnest_tokens(bigram, text, token = "ngrams", n = 2)
@@ -115,7 +123,7 @@ bigram_counts_s <- hm_bigrams_s %>%
   count(word1, word2, sort = TRUE)
 ```
 
-```{r bigram, warning=FALSE, message=FALSE}
+```{r bigram for married group, warning=FALSE, message=FALSE}
 hm_bigrams_m <- married_hm_data %>%
   filter(count != 1) %>%
   unnest_tokens(bigram, text, token = "ngrams", n = 2)
@@ -125,7 +133,7 @@ bigram_counts_m <- hm_bigrams_m %>%
   count(word1, word2, sort = TRUE)
 ```
 
-```{r bigram, warning=FALSE, message=FALSE}
+```{r bigram for widowed group, warning=FALSE, message=FALSE}
 hm_bigrams_w <- widowed_hm_data %>%
   filter(count != 1) %>%
   unnest_tokens(bigram, text, token = "ngrams", n = 2)
@@ -135,7 +143,7 @@ bigram_counts_w <- hm_bigrams_w %>%
   count(word1, word2, sort = TRUE)
 ```
 
-```{r bigram, warning=FALSE, message=FALSE}
+```{r bigram for divorced group, warning=FALSE, message=FALSE}
 hm_bigrams_d <- divorced_hm_data %>%
   filter(count != 1) %>%
   unnest_tokens(bigram, text, token = "ngrams", n = 2)
@@ -144,3 +152,250 @@ bigram_counts_d <- hm_bigrams_d %>%
   separate(bigram, c("word1", "word2"), sep = " ") %>%
   count(word1, word2, sort = TRUE)
 ```
+
+### Output
+```{r}
+word_count_s %>%
+      slice(1:10) %>%
+      mutate(word = reorder(word, n)) %>%
+      ggplot(aes(word, n)) +
+      geom_col() +
+      xlab(NULL) +
+      ylab("Word Frequency")+
+      coord_flip()
+```
+Word Frequency for single group.
+
+```{r}
+word_count_m %>%
+      slice(1:10) %>%
+      mutate(word = reorder(word, n)) %>%
+      ggplot(aes(word, n)) +
+      geom_col() +
+      xlab(NULL) +
+      ylab("Word Frequency")+
+      coord_flip()
+```
+Word Frequency for married group.
+```{r}
+word_count_d %>%
+      slice(1:10) %>%
+      mutate(word = reorder(word, n)) %>%
+      ggplot(aes(word, n)) +
+      geom_col() +
+      xlab(NULL) +
+      ylab("Word Frequency")+
+      coord_flip()
+```
+Word Frequency for divorced group.
+```{r}
+word_count_w %>%
+      slice(1:10) %>%
+      mutate(word = reorder(word, n)) %>%
+      ggplot(aes(word, n)) +
+      geom_col() +
+      xlab(NULL) +
+      ylab("Word Frequency")+
+      coord_flip()
+```
+Word Frequency for widowed group.
+```{r}
+bigram_graph <- bigram_counts_s %>%
+      slice(1:50) %>%
+      graph_from_data_frame()
+    
+    set.seed(123)
+    
+    x <- grid::arrow(type = "closed", length = unit(.1, "inches"))
+    
+    ggraph(bigram_graph, layout = "fr") +
+      geom_edge_link(aes(edge_alpha = n), show.legend = FALSE,
+                     arrow = x, end_cap = circle(.05, 'inches')) +
+      geom_node_point(color = "skyblue", size = 3) +
+      geom_node_text(aes(label = name), repel = TRUE) +
+      theme_void()
+```
+Network for single group.
+```{r}
+bigram_graph <- bigram_counts_m %>%
+      slice(1:50) %>%
+      graph_from_data_frame()
+    
+    set.seed(123)
+    
+    x <- grid::arrow(type = "closed", length = unit(.1, "inches"))
+    
+    ggraph(bigram_graph, layout = "fr") +
+      geom_edge_link(aes(edge_alpha = n), show.legend = FALSE,
+                     arrow = x, end_cap = circle(.05, 'inches')) +
+      geom_node_point(color = "skyblue", size = 3) +
+      geom_node_text(aes(label = name), repel = TRUE) +
+      theme_void()
+```
+Network for married group.
+```{r}
+bigram_graph <- bigram_counts_d %>%
+      slice(1:50) %>%
+      graph_from_data_frame()
+    
+    set.seed(123)
+    
+    x <- grid::arrow(type = "closed", length = unit(.1, "inches"))
+    
+    ggraph(bigram_graph, layout = "fr") +
+      geom_edge_link(aes(edge_alpha = n), show.legend = FALSE,
+                     arrow = x, end_cap = circle(.05, 'inches')) +
+      geom_node_point(color = "skyblue", size = 3) +
+      geom_node_text(aes(label = name), repel = TRUE) +
+      theme_void()
+```
+Network for divorced group.
+```{r}
+bigram_graph <- bigram_counts_w %>%
+      slice(1:50) %>%
+      graph_from_data_frame()
+    
+    set.seed(123)
+    
+    x <- grid::arrow(type = "closed", length = unit(.1, "inches"))
+    
+    ggraph(bigram_graph, layout = "fr") +
+      geom_edge_link(aes(edge_alpha = n), show.legend = FALSE,
+                     arrow = x, end_cap = circle(.05, 'inches')) +
+      geom_node_point(color = "skyblue", size = 3) +
+      geom_node_text(aes(label = name), repel = TRUE) +
+      theme_void()
+```
+Network for widowed group.
+```{r, warning=FALSE,}
+temp <- bag_of_words_s %>%
+      count(!!as.name("parenthood"), word) %>%
+      group_by(!!as.name("parenthood")) %>%
+      mutate(proportion = n / sum(n)) %>% 
+      select(-n) %>% 
+      spread(!!as.name("parenthood"), proportion)
+    
+      ggplot(temp, 
+             aes_string(x = colnames(temp)[2], y = colnames(temp)[3]),
+             color = abs(colnames(temp)[3] - colnames(temp)[2])) +
+      geom_abline(color = "gray40", lty = 2) +
+      geom_jitter(alpha = 0.1, size = 1, width = 0.3, height = 0.3) +
+      geom_text(aes(label = word), check_overlap = TRUE, vjust = 1.5) +
+      scale_x_log10(labels = percent_format()) +
+      scale_y_log10(labels = percent_format()) +
+      scale_color_gradient(limits = c(0, 0.001), low = "darkslategray4", high = "gray75") +
+      theme(legend.position="none")
+```
+Scatter for single group.
+```{r, warning=FALSE,}
+temp <- bag_of_words_m %>%
+      count(!!as.name("parenthood"), word) %>%
+      group_by(!!as.name("parenthood")) %>%
+      mutate(proportion = n / sum(n)) %>% 
+      select(-n) %>% 
+      spread(!!as.name("parenthood"), proportion)
+    
+      ggplot(temp, 
+             aes_string(x = colnames(temp)[2], y = colnames(temp)[3]),
+             color = abs(colnames(temp)[3] - colnames(temp)[2])) +
+      geom_abline(color = "gray40", lty = 2) +
+      geom_jitter(alpha = 0.1, size = 1, width = 0.3, height = 0.3) +
+      geom_text(aes(label = word), check_overlap = TRUE, vjust = 1.5) +
+      scale_x_log10(labels = percent_format()) +
+      scale_y_log10(labels = percent_format()) +
+      scale_color_gradient(limits = c(0, 0.001), low = "darkslategray4", high = "gray75") +
+      theme(legend.position="none")
+```
+Scatter for married group.
+```{r, warning=FALSE,}
+temp <- bag_of_words_d %>%
+      count(!!as.name("parenthood"), word) %>%
+      group_by(!!as.name("parenthood")) %>%
+      mutate(proportion = n / sum(n)) %>% 
+      select(-n) %>% 
+      spread(!!as.name("parenthood"), proportion)
+    
+      ggplot(temp, 
+             aes_string(x = colnames(temp)[2], y = colnames(temp)[3]),
+             color = abs(colnames(temp)[3] - colnames(temp)[2])) +
+      geom_abline(color = "gray40", lty = 2) +
+      geom_jitter(alpha = 0.1, size = 1, width = 0.3, height = 0.3) +
+      geom_text(aes(label = word), check_overlap = TRUE, vjust = 1.5) +
+      scale_x_log10(labels = percent_format()) +
+      scale_y_log10(labels = percent_format()) +
+      scale_color_gradient(limits = c(0, 0.001), low = "darkslategray4", high = "gray75") +
+      theme(legend.position="none")
+```
+Scatter for divorced group.
+```{r, warning=FALSE,}
+temp <- bag_of_words_w %>%
+      count(!!as.name("parenthood"), word) %>%
+      group_by(!!as.name("parenthood")) %>%
+      mutate(proportion = n / sum(n)) %>% 
+      select(-n) %>% 
+      spread(!!as.name("parenthood"), proportion)
+    
+      ggplot(temp, 
+             aes_string(x = colnames(temp)[2], y = colnames(temp)[3]),
+             color = abs(colnames(temp)[3] - colnames(temp)[2])) +
+      geom_abline(color = "gray40", lty = 2) +
+      geom_jitter(alpha = 0.1, size = 1, width = 0.3, height = 0.3) +
+      geom_text(aes(label = word), check_overlap = TRUE, vjust = 1.5) +
+      scale_x_log10(labels = percent_format()) +
+      scale_y_log10(labels = percent_format()) +
+      scale_color_gradient(limits = c(0, 0.001), low = "darkslategray4", high = "gray75") +
+      theme(legend.position="none")
+```
+Scatter for widowed group.
+```{r,warning=FALSE, message=FALSE}
+hm_bigrams_s %>%
+      count(!!as.name("parenthood"), bigram, sort = TRUE) %>%
+      group_by(!!as.name("parenthood")) %>%
+      top_n(10) %>%
+      ungroup() %>%
+      mutate(bigram = reorder(bigram, n)) %>%
+      ggplot(aes(bigram, n, fill = !!as.name("parenthood"))) +
+      geom_col(show.legend = FALSE) +
+      facet_wrap(as.formula(paste("~", "parenthood")), ncol = 2, scales = "free") +
+      coord_flip()
+```
+Bigram for single group.
+```{r,warning=FALSE, message=FALSE}
+hm_bigrams_m %>%
+      count(!!as.name("parenthood"), bigram, sort = TRUE) %>%
+      group_by(!!as.name("parenthood")) %>%
+      top_n(10) %>%
+      ungroup() %>%
+      mutate(bigram = reorder(bigram, n)) %>%
+      ggplot(aes(bigram, n, fill = !!as.name("parenthood"))) +
+      geom_col(show.legend = FALSE) +
+      facet_wrap(as.formula(paste("~", "parenthood")), ncol = 2, scales = "free") +
+      coord_flip()
+```
+Bigram for married group.
+```{r,warning=FALSE, message=FALSE}
+hm_bigrams_d %>%
+      count(!!as.name("parenthood"), bigram, sort = TRUE) %>%
+      group_by(!!as.name("parenthood")) %>%
+      top_n(10) %>%
+      ungroup() %>%
+      mutate(bigram = reorder(bigram, n)) %>%
+      ggplot(aes(bigram, n, fill = !!as.name("parenthood"))) +
+      geom_col(show.legend = FALSE) +
+      facet_wrap(as.formula(paste("~", "parenthood")), ncol = 2, scales = "free") +
+      coord_flip()
+```
+Bigram for divorced group.
+```{r,warning=FALSE, message=FALSE}
+hm_bigrams_w %>%
+      count(!!as.name("parenthood"), bigram, sort = TRUE) %>%
+      group_by(!!as.name("parenthood")) %>%
+      top_n(10) %>%
+      ungroup() %>%
+      mutate(bigram = reorder(bigram, n)) %>%
+      ggplot(aes(bigram, n, fill = !!as.name("parenthood"))) +
+      geom_col(show.legend = FALSE) +
+      facet_wrap(as.formula(paste("~", "parenthood")), ncol = 2, scales = "free") +
+      coord_flip()
+```
+Bigram for widowed group.
