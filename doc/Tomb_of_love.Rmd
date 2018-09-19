@@ -3,9 +3,9 @@ title: "GR5243-Project1"
 author: "Chenghao Yu cy2475"
 date: "September 18, 2018"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
