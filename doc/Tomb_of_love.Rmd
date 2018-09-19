@@ -3,6 +3,7 @@ title: "GR5243-Project1"
 author: "Chenghao Yu cy2475"
 date: "September 18, 2018"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
 ---
@@ -75,6 +76,9 @@ single_hm_data <- hm_data[which(hm_data$marital=="single"),]
 married_hm_data <- hm_data[which(hm_data$marital=="married"),]
 widowed_hm_data <- hm_data[which(hm_data$marital=="widowed"),]
 divorced_hm_data <- hm_data[which(hm_data$marital=="divorced"),]
+
+parent_hm_data <- hm_data[which(hm_data$parenthood=="y"),]
+noparent_hm_data <- hm_data[which(hm_data$parenthood=="n"),]
 ```
 
 ### Create a bag of words using the text data for different marital status group
@@ -108,6 +112,22 @@ bag_of_words_d <-  divorced_hm_data %>%
   unnest_tokens(word, text)
 
 word_count_d <- bag_of_words_d %>%
+  count(word, sort = TRUE)
+```
+
+```{r bag of words for nonparenthood group, warning=FALSE, message=FALSE}
+bag_of_words_n <-  noparent_hm_data %>%
+  unnest_tokens(word, text)
+
+word_count_n <- bag_of_words_n %>%
+  count(word, sort = TRUE)
+```
+
+```{r bag of words for parenthood group, warning=FALSE, message=FALSE}
+bag_of_words_p <-  parent_hm_data %>%
+  unnest_tokens(word, text)
+
+word_count_p <- bag_of_words_p %>%
   count(word, sort = TRUE)
 ```
 
@@ -153,54 +173,99 @@ bigram_counts_d <- hm_bigrams_d %>%
   count(word1, word2, sort = TRUE)
 ```
 
-### Output
-```{r}
-word_count_s %>%
-      slice(1:10) %>%
-      mutate(word = reorder(word, n)) %>%
-      ggplot(aes(word, n)) +
-      geom_col() +
-      xlab(NULL) +
-      ylab("Word Frequency")+
-      coord_flip()
+```{r bigram for parent group, warning=FALSE, message=FALSE}
+hm_bigrams_p <- parent_hm_data %>%
+  filter(count != 1) %>%
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)
+
+bigram_counts_p <- hm_bigrams_p %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  count(word1, word2, sort = TRUE)
 ```
-Word Frequency for single group.
+
+```{r bigram for no-parent group, warning=FALSE, message=FALSE}
+hm_bigrams_n <- noparent_hm_data %>%
+  filter(count != 1) %>%
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)
+
+bigram_counts_n <- hm_bigrams_n %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  count(word1, word2, sort = TRUE)
+```
+
+### Data Bolg
+
+### How Being A Parent Make Your Life Happier.
+
+Nowadays, the increasing number of well educated people tend to be a DINK(Double Income No Kids). Their reasons are variance but the common sense in this group is that the parenthood cannot bring them more happiness than other status in their lives.
+
+However, the analysis on the HappyDB data shows that the subject's status do not make much difference, except the parenthood. 
+
 
 ```{r}
-word_count_m %>%
+
+P1 <- word_count_s %>%
       slice(1:10) %>%
       mutate(word = reorder(word, n)) %>%
       ggplot(aes(word, n)) +
       geom_col() +
       xlab(NULL) +
-      ylab("Word Frequency")+
+      ylab("Word Frequency for single group")+
       coord_flip()
-```
-Word Frequency for married group.
-```{r}
-word_count_d %>%
+
+P2 <- word_count_m %>%
       slice(1:10) %>%
       mutate(word = reorder(word, n)) %>%
       ggplot(aes(word, n)) +
       geom_col() +
       xlab(NULL) +
-      ylab("Word Frequency")+
+      ylab("Word Frequency for married group")+
       coord_flip()
-```
-Word Frequency for divorced group.
-```{r}
-word_count_w %>%
+
+P3 <- word_count_d %>%
       slice(1:10) %>%
       mutate(word = reorder(word, n)) %>%
       ggplot(aes(word, n)) +
       geom_col() +
       xlab(NULL) +
-      ylab("Word Frequency")+
+      ylab("Word Frequency for divorced group")+
       coord_flip()
+
+P4 <- word_count_w %>%
+      slice(1:10) %>%
+      mutate(word = reorder(word, n)) %>%
+      ggplot(aes(word, n)) +
+      geom_col() +
+      xlab(NULL) +
+      ylab("Word Frequency for widowed group")+
+      coord_flip()
+
+grid.arrange(P1, P2, P3, P4, ncol=2, nrow=2)
+
 ```
-Word Frequency for widowed group.
+By compaing the bar chart for four groups with different martial status, there are no remarkable differences about the top rank of happiness topics between four groups. The single group seems do not have the topic related to parenthood in top ranking, which because the percentage of parenthood in single group in much lower than it in the other three group. 
+
+```{r, warning=FALSE, message=FALSE}
+boxplot(as.numeric(single_hm_data$age),as.numeric(married_hm_data$age),
+        as.numeric(divorced_hm_data$age),as.numeric(widowed_hm_data$age),names=c("Single","Married","Divorced","Widowed"))
+
+parenthoodpct <- data.frame(
+                        c(sum(single_hm_data$parenthood=="y")/dim(single_hm_data)[1],
+                        sum(married_hm_data$parenthood=="y")/dim(married_hm_data)[1],
+                        sum(divorced_hm_data$parenthood=="y")/dim(divorced_hm_data)[1],
+                        sum(widowed_hm_data$parenthood=="y")/dim(widowed_hm_data)[1]))
+
+colnames(parenthoodpct) <- c("Parenthood_percentage")
+parenthoodpct$Group <- c("Single","Married","Divorced","Widowed")
+
+ggplot(parenthoodpct, aes(x = Group, y = Parenthood_percentage)) +
+  geom_bar(stat = "identity")
+
+```
+Also, the range of age is highly related to the martial status, but according to the bar chart above, the only thing influenced by age is that the people in single group are not old enought to be a parent.
+
 ```{r}
-bigram_graph <- bigram_counts_s %>%
+ bigram_graph <- bigram_counts_p %>%
       slice(1:50) %>%
       graph_from_data_frame()
     
@@ -208,16 +273,15 @@ bigram_graph <- bigram_counts_s %>%
     
     x <- grid::arrow(type = "closed", length = unit(.1, "inches"))
     
-    ggraph(bigram_graph, layout = "fr") +
+P5 <-    ggraph(bigram_graph, layout = "fr") +
       geom_edge_link(aes(edge_alpha = n), show.legend = FALSE,
                      arrow = x, end_cap = circle(.05, 'inches')) +
       geom_node_point(color = "skyblue", size = 3) +
       geom_node_text(aes(label = name), repel = TRUE) +
+      ggtitle("Word connection for parenthood group")+
       theme_void()
-```
-Network for single group.
-```{r}
-bigram_graph <- bigram_counts_m %>%
+
+bigram_graph <- bigram_counts_n %>%
       slice(1:50) %>%
       graph_from_data_frame()
     
@@ -225,57 +289,29 @@ bigram_graph <- bigram_counts_m %>%
     
     x <- grid::arrow(type = "closed", length = unit(.1, "inches"))
     
-    ggraph(bigram_graph, layout = "fr") +
+P6 <-     ggraph(bigram_graph, layout = "fr") +
       geom_edge_link(aes(edge_alpha = n), show.legend = FALSE,
                      arrow = x, end_cap = circle(.05, 'inches')) +
       geom_node_point(color = "skyblue", size = 3) +
       geom_node_text(aes(label = name), repel = TRUE) +
+      ggtitle("Word connection for non-parenthood group")+
       theme_void()
+
+    grid.arrange(P5, P6, nrow=2)
+
 ```
-Network for married group.
-```{r}
-bigram_graph <- bigram_counts_d %>%
-      slice(1:50) %>%
-      graph_from_data_frame()
-    
-    set.seed(123)
-    
-    x <- grid::arrow(type = "closed", length = unit(.1, "inches"))
-    
-    ggraph(bigram_graph, layout = "fr") +
-      geom_edge_link(aes(edge_alpha = n), show.legend = FALSE,
-                     arrow = x, end_cap = circle(.05, 'inches')) +
-      geom_node_point(color = "skyblue", size = 3) +
-      geom_node_text(aes(label = name), repel = TRUE) +
-      theme_void()
-```
-Network for divorced group.
-```{r}
-bigram_graph <- bigram_counts_w %>%
-      slice(1:50) %>%
-      graph_from_data_frame()
-    
-    set.seed(123)
-    
-    x <- grid::arrow(type = "closed", length = unit(.1, "inches"))
-    
-    ggraph(bigram_graph, layout = "fr") +
-      geom_edge_link(aes(edge_alpha = n), show.legend = FALSE,
-                     arrow = x, end_cap = circle(.05, 'inches')) +
-      geom_node_point(color = "skyblue", size = 3) +
-      geom_node_text(aes(label = name), repel = TRUE) +
-      theme_void()
-```
-Network for widowed group.
+As the words connection chart shows, after being a parenthood, the number of topices which have path to the topic "family" are increased. The connections between "family" and its left side topics such as "mine", "game", "team", etc is one-way path. These topics cannot be considered as a part of family topics.
+Meanwhile, in the chart of parenthood group, the topic "birthday" is more closer to the topic "family" and it connected to the "daughter" and "son", and these are all point to the "family", they are parts of family topics.
+
 ```{r, warning=FALSE,}
-temp <- bag_of_words_s %>%
-      count(!!as.name("parenthood"), word) %>%
-      group_by(!!as.name("parenthood")) %>%
+temp <- bag_of_words_p %>%
+      count(!!as.name("reflection_period"), word) %>%
+      group_by(!!as.name("reflection_period")) %>%
       mutate(proportion = n / sum(n)) %>% 
       select(-n) %>% 
-      spread(!!as.name("parenthood"), proportion)
+      spread(!!as.name("reflection_period"), proportion)
     
-      ggplot(temp, 
+ P7<-     ggplot(temp, 
              aes_string(x = colnames(temp)[2], y = colnames(temp)[3]),
              color = abs(colnames(temp)[3] - colnames(temp)[2])) +
       geom_abline(color = "gray40", lty = 2) +
@@ -284,18 +320,17 @@ temp <- bag_of_words_s %>%
       scale_x_log10(labels = percent_format()) +
       scale_y_log10(labels = percent_format()) +
       scale_color_gradient(limits = c(0, 0.001), low = "darkslategray4", high = "gray75") +
+    ggtitle("Parenthood group")+
       theme(legend.position="none")
-```
-Scatter for single group.
-```{r, warning=FALSE,}
-temp <- bag_of_words_m %>%
-      count(!!as.name("parenthood"), word) %>%
-      group_by(!!as.name("parenthood")) %>%
+
+temp <- bag_of_words_n %>%
+      count(!!as.name("reflection_period"), word) %>%
+      group_by(!!as.name("reflection_period")) %>%
       mutate(proportion = n / sum(n)) %>% 
       select(-n) %>% 
-      spread(!!as.name("parenthood"), proportion)
+      spread(!!as.name("reflection_period"), proportion)
     
-      ggplot(temp, 
+ P8<-     ggplot(temp, 
              aes_string(x = colnames(temp)[2], y = colnames(temp)[3]),
              color = abs(colnames(temp)[3] - colnames(temp)[2])) +
       geom_abline(color = "gray40", lty = 2) +
@@ -304,51 +339,16 @@ temp <- bag_of_words_m %>%
       scale_x_log10(labels = percent_format()) +
       scale_y_log10(labels = percent_format()) +
       scale_color_gradient(limits = c(0, 0.001), low = "darkslategray4", high = "gray75") +
+   ggtitle("Non-parenthood group")+
       theme(legend.position="none")
+      
+ 
+  grid.arrange(P7, P8, ncol=2)
 ```
-Scatter for married group.
-```{r, warning=FALSE,}
-temp <- bag_of_words_d %>%
-      count(!!as.name("parenthood"), word) %>%
-      group_by(!!as.name("parenthood")) %>%
-      mutate(proportion = n / sum(n)) %>% 
-      select(-n) %>% 
-      spread(!!as.name("parenthood"), proportion)
-    
-      ggplot(temp, 
-             aes_string(x = colnames(temp)[2], y = colnames(temp)[3]),
-             color = abs(colnames(temp)[3] - colnames(temp)[2])) +
-      geom_abline(color = "gray40", lty = 2) +
-      geom_jitter(alpha = 0.1, size = 1, width = 0.3, height = 0.3) +
-      geom_text(aes(label = word), check_overlap = TRUE, vjust = 1.5) +
-      scale_x_log10(labels = percent_format()) +
-      scale_y_log10(labels = percent_format()) +
-      scale_color_gradient(limits = c(0, 0.001), low = "darkslategray4", high = "gray75") +
-      theme(legend.position="none")
-```
-Scatter for divorced group.
-```{r, warning=FALSE,}
-temp <- bag_of_words_w %>%
-      count(!!as.name("parenthood"), word) %>%
-      group_by(!!as.name("parenthood")) %>%
-      mutate(proportion = n / sum(n)) %>% 
-      select(-n) %>% 
-      spread(!!as.name("parenthood"), proportion)
-    
-      ggplot(temp, 
-             aes_string(x = colnames(temp)[2], y = colnames(temp)[3]),
-             color = abs(colnames(temp)[3] - colnames(temp)[2])) +
-      geom_abline(color = "gray40", lty = 2) +
-      geom_jitter(alpha = 0.1, size = 1, width = 0.3, height = 0.3) +
-      geom_text(aes(label = word), check_overlap = TRUE, vjust = 1.5) +
-      scale_x_log10(labels = percent_format()) +
-      scale_y_log10(labels = percent_format()) +
-      scale_color_gradient(limits = c(0, 0.001), low = "darkslategray4", high = "gray75") +
-      theme(legend.position="none")
-```
-Scatter for widowed group.
+The family group topics like "Birthday", are both long period topics as well as short period topics, so any topics join the family group topics will be the resources of happiness for long period and short period. Thus, after "Son" and "daughter" linked to the "fmaily" because a person become a parent, he or she is likely to get more happiness resource and oppotunities.
+
 ```{r,warning=FALSE, message=FALSE}
-hm_bigrams_s %>%
+P9 <- hm_bigrams_s %>%
       count(!!as.name("parenthood"), bigram, sort = TRUE) %>%
       group_by(!!as.name("parenthood")) %>%
       top_n(10) %>%
@@ -357,11 +357,11 @@ hm_bigrams_s %>%
       ggplot(aes(bigram, n, fill = !!as.name("parenthood"))) +
       geom_col(show.legend = FALSE) +
       facet_wrap(as.formula(paste("~", "parenthood")), ncol = 2, scales = "free") +
+   ggtitle("Single group with parenthood")+
       coord_flip()
-```
-Bigram for single group.
-```{r,warning=FALSE, message=FALSE}
-hm_bigrams_m %>%
+
+
+P10 <- hm_bigrams_d %>%
       count(!!as.name("parenthood"), bigram, sort = TRUE) %>%
       group_by(!!as.name("parenthood")) %>%
       top_n(10) %>%
@@ -370,11 +370,29 @@ hm_bigrams_m %>%
       ggplot(aes(bigram, n, fill = !!as.name("parenthood"))) +
       geom_col(show.legend = FALSE) +
       facet_wrap(as.formula(paste("~", "parenthood")), ncol = 2, scales = "free") +
+  ggtitle("Divorced group with parenthood")+
       coord_flip()
+
+P11 <- hm_bigrams_w %>%
+      count(!!as.name("parenthood"), bigram, sort = TRUE) %>%
+      group_by(!!as.name("parenthood")) %>%
+      top_n(2) %>%
+      ungroup() %>%
+      mutate(bigram = reorder(bigram, n)) %>%
+      ggplot(aes(bigram, n, fill = !!as.name("parenthood"))) +
+      geom_col(show.legend = FALSE) +
+      facet_wrap(as.formula(paste("~", "parenthood")), ncol = 2, scales = "free") +
+  ggtitle("Widowed group with parenthood")+
+      coord_flip()
+
+ grid.arrange(P9, P10,P11, ncol=2)
 ```
-Bigram for married group.
+If a person do not have children and spouse at the same time, there are two topics may be used as a offset. The "friend" and "game" are new topics appears only in the spouseless group without parenthood.
 ```{r,warning=FALSE, message=FALSE}
-hm_bigrams_d %>%
+
+hm_bigrams_ns <- rbind(hm_bigrams_s,hm_bigrams_d,hm_bigrams_w)
+
+P12 <- hm_bigrams_ns %>%
       count(!!as.name("parenthood"), bigram, sort = TRUE) %>%
       group_by(!!as.name("parenthood")) %>%
       top_n(10) %>%
@@ -383,11 +401,10 @@ hm_bigrams_d %>%
       ggplot(aes(bigram, n, fill = !!as.name("parenthood"))) +
       geom_col(show.legend = FALSE) +
       facet_wrap(as.formula(paste("~", "parenthood")), ncol = 2, scales = "free") +
+  ggtitle("Spouseless  group with parenthood")+
       coord_flip()
-```
-Bigram for divorced group.
-```{r,warning=FALSE, message=FALSE}
-hm_bigrams_w %>%
+
+P13 <- hm_bigrams_m %>%
       count(!!as.name("parenthood"), bigram, sort = TRUE) %>%
       group_by(!!as.name("parenthood")) %>%
       top_n(10) %>%
@@ -396,6 +413,12 @@ hm_bigrams_w %>%
       ggplot(aes(bigram, n, fill = !!as.name("parenthood"))) +
       geom_col(show.legend = FALSE) +
       facet_wrap(as.formula(paste("~", "parenthood")), ncol = 2, scales = "free") +
+  ggtitle("Married group with parenthood")+
       coord_flip()
+
+
+ grid.arrange(P12, P13, ncol=2)
 ```
-Bigram for widowed group.
+For more detailed, people may get happiness from "game" when they do not have children.
+It may infer that the happiness to be a parent is similar as raise a child. The sense of achievement may be the root of these happiness. 
+The "friend" is likle to be the offset of spouseless. It is reasonable because both the friendship and marriage relationship are the emotion relationship.  
